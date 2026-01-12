@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ru.chtcholeg.app.presentation.components.MessageInput
 import ru.chtcholeg.app.presentation.components.MessageList
+import ru.chtcholeg.app.presentation.theme.ChatColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,8 +47,9 @@ fun ChatScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = ChatColors.HeaderBackground,
+                    titleContentColor = ChatColors.HeaderText,
+                    actionIconContentColor = ChatColors.HeaderText
                 )
             )
         },

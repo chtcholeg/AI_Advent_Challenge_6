@@ -1,5 +1,6 @@
 package ru.chtcholeg.app.presentation.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -8,10 +9,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import ru.chtcholeg.app.data.repository.SettingsRepository
 import ru.chtcholeg.app.domain.model.AiSettings
 import ru.chtcholeg.app.domain.model.Model
+import ru.chtcholeg.app.presentation.theme.ChatColors
 import org.koin.compose.koinInject
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,23 +48,38 @@ fun SettingsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    containerColor = ChatColors.HeaderBackground,
+                    titleContentColor = ChatColors.HeaderText,
+                    navigationIconContentColor = ChatColors.HeaderText,
+                    actionIconContentColor = ChatColors.HeaderText
                 )
             )
         }
     ) { paddingValues ->
-        Column(
+        val gradientBrush = Brush.verticalGradient(
+            colors = listOf(
+                ChatColors.BackgroundGradientTop,
+                ChatColors.BackgroundGradientMiddle,
+                ChatColors.BackgroundGradientBottom
+            )
+        )
+
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .background(brush = gradientBrush)
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
             Text(
                 text = "Configure AI model parameters",
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = ChatColors.HeaderBackground
             )
 
             // Model selection
@@ -120,6 +138,7 @@ fun SettingsScreen(
                     settingsRepository.updateSettings(settings.copy(repetitionPenalty = value))
                 }
             )
+            }
         }
     }
 }
@@ -138,7 +157,7 @@ private fun ModelSelector(
         Text(
             text = "Model",
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            color = ChatColors.HeaderBackground
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -169,12 +188,13 @@ private fun ModelSelector(
                             Column {
                                 Text(
                                     text = model.displayName,
-                                    style = MaterialTheme.typography.bodyLarge
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = ChatColors.HeaderBackground
                                 )
                                 Text(
                                     text = "Provider: ${model.api.name}",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = ChatColors.AiBubbleBackground
                                 )
                             }
                         },
@@ -192,7 +212,7 @@ private fun ModelSelector(
         Text(
             text = "Choose the AI model to use for chat responses",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = ChatColors.AiBubbleBackground
         )
     }
 }
@@ -216,12 +236,12 @@ private fun SliderSetting(
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = ChatColors.HeaderBackground
             )
             Text(
                 text = formatFloat(value, 2),
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.primary
+                color = ChatColors.UserBubbleBackground
             )
         }
 
@@ -229,13 +249,18 @@ private fun SliderSetting(
             value = value,
             onValueChange = onValueChange,
             valueRange = valueRange,
-            steps = steps
+            steps = steps,
+            colors = SliderDefaults.colors(
+                thumbColor = ChatColors.UserBubbleBackground,
+                activeTrackColor = ChatColors.UserBubbleBackground,
+                inactiveTrackColor = ChatColors.AiBubbleBackground.copy(alpha = 0.3f)
+            )
         )
 
         Text(
             text = description,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = ChatColors.AiBubbleBackground
         )
     }
 }
@@ -258,12 +283,12 @@ private fun IntSliderSetting(
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                color = ChatColors.HeaderBackground
             )
             Text(
                 text = value.toString(),
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.primary
+                color = ChatColors.UserBubbleBackground
             )
         }
 
@@ -271,13 +296,18 @@ private fun IntSliderSetting(
             value = value.toFloat(),
             onValueChange = { onValueChange(it.toInt()) },
             valueRange = valueRange.first.toFloat()..valueRange.last.toFloat(),
-            steps = ((valueRange.last - valueRange.first) / 256).coerceAtLeast(0) // Reasonable number of steps
+            steps = ((valueRange.last - valueRange.first) / 256).coerceAtLeast(0), // Reasonable number of steps
+            colors = SliderDefaults.colors(
+                thumbColor = ChatColors.UserBubbleBackground,
+                activeTrackColor = ChatColors.UserBubbleBackground,
+                inactiveTrackColor = ChatColors.AiBubbleBackground.copy(alpha = 0.3f)
+            )
         )
 
         Text(
             text = description,
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = ChatColors.AiBubbleBackground
         )
     }
 }

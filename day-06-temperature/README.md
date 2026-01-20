@@ -686,9 +686,4 @@ The **TEMPERATURE_EXPERIMENT_RESULTS.md** file contains:
 
 ## Videos
 
-### Day 1 & 2
-- https://disk.yandex.ru/i/v697w0dF54mCfA
-
-### Day 6 - Coming Soon
-- Message copying demonstration
-- Temperature parameter testing walkthrough
+- https://disk.yandex.ru/i/m6_YWi5HhmM3mQ

@@ -1,0 +1,635 @@
+package ru.chtcholeg.app.presentation.settings
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.unit.dp
+import org.koin.compose.koinInject
+import ru.chtcholeg.app.data.repository.SettingsRepository
+import ru.chtcholeg.app.domain.model.AiSettings
+import ru.chtcholeg.app.domain.model.Model
+import ru.chtcholeg.app.domain.model.ResponseMode
+import ru.chtcholeg.app.presentation.components.PlatformVerticalScrollbar
+import ru.chtcholeg.app.presentation.theme.ChatColors
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsScreen(
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val settingsRepository: SettingsRepository = koinInject()
+    val settings by settingsRepository.settings.collectAsState()
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text("AI Settings") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { settingsRepository.resetToDefaults() }) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Reset to defaults"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = ChatColors.HeaderBackground,
+                    titleContentColor = ChatColors.HeaderText,
+                    navigationIconContentColor = ChatColors.HeaderText,
+                    actionIconContentColor = ChatColors.HeaderText
+                )
+            )
+        }
+    ) { paddingValues ->
+        val gradientBrush = Brush.verticalGradient(
+            colors = listOf(
+                ChatColors.BackgroundGradientTop,
+                ChatColors.BackgroundGradientMiddle,
+                ChatColors.BackgroundGradientBottom
+            )
+        )
+
+        val scrollState = rememberScrollState()
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(brush = gradientBrush)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(scrollState)
+                    .padding(16.dp)
+                    .padding(end = 12.dp), // Add padding for scrollbar
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+            Text(
+                text = "Configure AI model parameters",
+                style = MaterialTheme.typography.bodyLarge,
+                color = ChatColors.HeaderBackground
+            )
+
+            // Model selection
+            ModelSelector(
+                currentModel = settings.model,
+                onModelChange = { model ->
+                    settingsRepository.updateSettings(settings.copy(model = model))
+                }
+            )
+
+            HorizontalDivider()
+
+            // Response Mode selector
+            ResponseModeSelector(
+                currentMode = settings.responseMode,
+                onModeChange = { mode ->
+                    settingsRepository.updateSettings(settings.copy(responseMode = mode))
+                }
+            )
+
+            // Preserve History Setting
+            PreserveHistorySetting(
+                isEnabled = settings.preserveHistoryOnSystemPromptChange,
+                onToggle = { enabled ->
+                    settingsRepository.updateSettings(settings.copy(preserveHistoryOnSystemPromptChange = enabled))
+                }
+            )
+
+            HorizontalDivider()
+
+            // Summarization Settings
+            SummarizationSettings(
+                isEnabled = settings.summarizationEnabled,
+                messageThreshold = settings.summarizationMessageThreshold,
+                onToggle = { enabled ->
+                    settingsRepository.updateSettings(settings.copy(summarizationEnabled = enabled))
+                },
+                onThresholdChange = { threshold ->
+                    settingsRepository.updateSettings(settings.copy(summarizationMessageThreshold = threshold))
+                }
+            )
+
+            HorizontalDivider()
+
+            // Temperature slider
+            SliderSetting(
+                label = "Temperature",
+                value = settings.temperature ?: AiSettings.DEFAULT_TEMPERATURE,
+                valueRange = AiSettings.MIN_TEMPERATURE..AiSettings.MAX_TEMPERATURE,
+                steps = 19, // 20 steps for 0.1 increments
+                description = "Controls randomness. Higher values make output more random.",
+                onValueChange = { value ->
+                    settingsRepository.updateSettings(settings.copy(temperature = value))
+                }
+            )
+
+            // Top P slider
+            SliderSetting(
+                label = "Top P",
+                value = settings.topP ?: AiSettings.DEFAULT_TOP_P,
+                valueRange = AiSettings.MIN_TOP_P..AiSettings.MAX_TOP_P,
+                steps = 9, // 10 steps for 0.1 increments
+                description = "Nucleus sampling threshold. Controls diversity of responses.",
+                onValueChange = { value ->
+                    settingsRepository.updateSettings(settings.copy(topP = value))
+                }
+            )
+
+            // Max Tokens slider
+            IntSliderSetting(
+                label = "Max Tokens",
+                value = settings.maxTokens ?: AiSettings.DEFAULT_MAX_TOKENS,
+                valueRange = AiSettings.MIN_MAX_TOKENS..AiSettings.MAX_MAX_TOKENS,
+                description = "Maximum length of generated response.",
+                onValueChange = { value ->
+                    settingsRepository.updateSettings(settings.copy(maxTokens = value))
+                }
+            )
+
+            // Repetition Penalty slider
+            SliderSetting(
+                label = "Repetition Penalty",
+                value = settings.repetitionPenalty ?: AiSettings.DEFAULT_REPETITION_PENALTY,
+                valueRange = AiSettings.MIN_REPETITION_PENALTY..AiSettings.MAX_REPETITION_PENALTY,
+                steps = 19, // 20 steps for 0.1 increments
+                description = "Penalizes repeating tokens. Higher values reduce repetition.",
+                onValueChange = { value ->
+                    settingsRepository.updateSettings(settings.copy(repetitionPenalty = value))
+                }
+            )
+            }
+
+            PlatformVerticalScrollbar(
+                scrollState = scrollState,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ModelSelector(
+    currentModel: String,
+    onModelChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedModel = Model.fromId(currentModel) ?: Model.GigaChat
+
+    Column(modifier = modifier) {
+        Text(
+            text = "Model",
+            style = MaterialTheme.typography.titleMedium,
+            color = ChatColors.HeaderBackground
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = selectedModel.displayName,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Select Model") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                    focusedTextColor = ChatColors.HeaderBackground,
+                    unfocusedTextColor = ChatColors.HeaderBackground,
+                    focusedLabelColor = ChatColors.HeaderBackground,
+                    unfocusedLabelColor = ChatColors.HeaderBackground
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true)
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                containerColor = ChatColors.DropdownBackground
+            ) {
+                Model.ALL_MODELS.forEach { model ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(
+                                    text = model.displayName,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = ChatColors.DropdownText
+                                )
+                                Text(
+                                    text = "Provider: ${model.api.name}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = ChatColors.DropdownTextSecondary
+                                )
+                            }
+                        },
+                        onClick = {
+                            onModelChange(model.id)
+                            expanded = false
+                        },
+                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = "Choose the AI model to use for chat responses",
+            style = MaterialTheme.typography.bodySmall,
+            color = ChatColors.AiBubbleBackground
+        )
+    }
+}
+
+@Composable
+private fun SliderSetting(
+    label: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+    description: String,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                color = ChatColors.HeaderBackground
+            )
+            Text(
+                text = formatFloat(value),
+                style = MaterialTheme.typography.bodyLarge,
+                color = ChatColors.UserBubbleBackground
+            )
+        }
+
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = valueRange,
+            steps = steps,
+            colors = SliderDefaults.colors(
+                thumbColor = ChatColors.UserBubbleBackground,
+                activeTrackColor = ChatColors.UserBubbleBackground,
+                inactiveTrackColor = ChatColors.AiBubbleBackground.copy(alpha = 0.3f)
+            )
+        )
+
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodySmall,
+            color = ChatColors.AiBubbleBackground
+        )
+    }
+}
+
+@Composable
+private fun IntSliderSetting(
+    label: String,
+    value: Int,
+    valueRange: IntRange,
+    description: String,
+    onValueChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                color = ChatColors.HeaderBackground
+            )
+            Text(
+                text = value.toString(),
+                style = MaterialTheme.typography.bodyLarge,
+                color = ChatColors.UserBubbleBackground
+            )
+        }
+
+        Slider(
+            value = value.toFloat(),
+            onValueChange = { onValueChange(it.toInt()) },
+            valueRange = valueRange.first.toFloat()..valueRange.last.toFloat(),
+            steps = ((valueRange.last - valueRange.first) / 256).coerceAtLeast(0), // Reasonable number of steps
+            colors = SliderDefaults.colors(
+                thumbColor = ChatColors.UserBubbleBackground,
+                activeTrackColor = ChatColors.UserBubbleBackground,
+                inactiveTrackColor = ChatColors.AiBubbleBackground.copy(alpha = 0.3f)
+            )
+        )
+
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodySmall,
+            color = ChatColors.AiBubbleBackground
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ResponseModeSelector(
+    currentMode: ResponseMode,
+    onModeChange: (ResponseMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier) {
+        Text(
+            text = "Response Mode",
+            style = MaterialTheme.typography.titleMedium,
+            color = ChatColors.HeaderBackground
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = it },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = currentMode.displayName,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Select Response Mode") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                    focusedTextColor = ChatColors.HeaderBackground,
+                    unfocusedTextColor = ChatColors.HeaderBackground,
+                    focusedLabelColor = ChatColors.HeaderBackground,
+                    unfocusedLabelColor = ChatColors.HeaderBackground
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor(type = MenuAnchorType.PrimaryNotEditable, enabled = true)
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                containerColor = ChatColors.DropdownBackground
+            ) {
+                ResponseMode.entries.forEach { mode ->
+                    DropdownMenuItem(
+                        text = {
+                            Column {
+                                Text(
+                                    text = mode.displayName,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = ChatColors.DropdownText
+                                )
+                                Text(
+                                    text = mode.description,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = ChatColors.DropdownTextSecondary
+                                )
+                            }
+                        },
+                        onClick = {
+                            onModeChange(mode)
+                            expanded = false
+                        },
+                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = when (currentMode) {
+                ResponseMode.NORMAL -> "AI will respond directly to your questions in a conversational manner."
+                ResponseMode.STRUCTURED_JSON -> "AI will respond in strict JSON format with question summary, detailed response, expert role, and unicode symbols. Use the Format button to view structured data."
+                ResponseMode.DIALOG -> "AI will ask clarifying questions one at a time to gather all necessary information before providing a comprehensive final result."
+                ResponseMode.STEP_BY_STEP -> "AI will solve problems step-by-step, showing clear reasoning at each stage. Ideal for math, logic, and analytical questions."
+                ResponseMode.EXPERT_PANEL -> "AI simulates a panel of 3-4 experts discussing the topic from different perspectives, then forming a consensus conclusion."
+                ResponseMode.STRUCTURED_XML -> "AI will respond in strict XML format with question summary, detailed response, expert role, and unicode symbols."
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = ChatColors.AiBubbleBackground
+        )
+    }
+}
+
+@Composable
+private fun PreserveHistorySetting(
+    isEnabled: Boolean,
+    onToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Preserve Chat History",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = ChatColors.HeaderBackground
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (isEnabled) {
+                        "Chat history will be preserved when changing response modes. Only the system prompt will be updated."
+                    } else {
+                        "Chat history will be cleared when changing response modes."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ChatColors.AiBubbleBackground
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Switch(
+                checked = isEnabled,
+                onCheckedChange = onToggle,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = ChatColors.UserBubbleBackground,
+                    checkedTrackColor = ChatColors.UserBubbleBackground.copy(alpha = 0.5f),
+                    uncheckedThumbColor = ChatColors.AiBubbleBackground,
+                    uncheckedTrackColor = ChatColors.AiBubbleBackground.copy(alpha = 0.3f)
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun SummarizationSettings(
+    isEnabled: Boolean,
+    messageThreshold: Int,
+    onToggle: (Boolean) -> Unit,
+    onThresholdChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = "Auto-Summarization",
+            style = MaterialTheme.typography.titleMedium,
+            color = ChatColors.HeaderBackground
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Enable Auto-Summarization",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = ChatColors.HeaderBackground
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = if (isEnabled) {
+                        "Conversation will be automatically summarized after $messageThreshold messages"
+                    } else {
+                        "Auto-summarization is disabled. Use the summarize button manually."
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = ChatColors.AiBubbleBackground
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Switch(
+                checked = isEnabled,
+                onCheckedChange = onToggle,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = ChatColors.UserBubbleBackground,
+                    checkedTrackColor = ChatColors.UserBubbleBackground.copy(alpha = 0.5f),
+                    uncheckedThumbColor = ChatColors.AiBubbleBackground,
+                    uncheckedTrackColor = ChatColors.AiBubbleBackground.copy(alpha = 0.3f)
+                )
+            )
+        }
+
+        if (isEnabled) {
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Message Threshold",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = ChatColors.HeaderBackground
+                )
+                Text(
+                    text = "$messageThreshold messages",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = ChatColors.UserBubbleBackground
+                )
+            }
+
+            Slider(
+                value = messageThreshold.toFloat(),
+                onValueChange = { onThresholdChange(it.toInt()) },
+                valueRange = AiSettings.MIN_SUMMARIZATION_THRESHOLD.toFloat()..AiSettings.MAX_SUMMARIZATION_THRESHOLD.toFloat(),
+                steps = (AiSettings.MAX_SUMMARIZATION_THRESHOLD - AiSettings.MIN_SUMMARIZATION_THRESHOLD) / 2 - 1,
+                colors = SliderDefaults.colors(
+                    thumbColor = ChatColors.UserBubbleBackground,
+                    activeTrackColor = ChatColors.UserBubbleBackground,
+                    inactiveTrackColor = ChatColors.AiBubbleBackground.copy(alpha = 0.3f)
+                )
+            )
+
+            Text(
+                text = "Number of messages after which conversation will be automatically summarized (${AiSettings.MIN_SUMMARIZATION_THRESHOLD}-${AiSettings.MAX_SUMMARIZATION_THRESHOLD})",
+                style = MaterialTheme.typography.bodySmall,
+                color = ChatColors.AiBubbleBackground
+            )
+        }
+    }
+}
+
+/**
+ * Format float to string with specified decimal places
+ * Cross-platform alternative to String.format()
+ */
+private fun formatFloat(value: Float, decimalPlaces: Int = 2): String {
+    val multiplier = when (decimalPlaces) {
+        1 -> 10
+        2 -> 100
+        3 -> 1000
+        else -> 100
+    }
+    val rounded = (value * multiplier).toInt().toFloat() / multiplier
+    return rounded.toString()
+}

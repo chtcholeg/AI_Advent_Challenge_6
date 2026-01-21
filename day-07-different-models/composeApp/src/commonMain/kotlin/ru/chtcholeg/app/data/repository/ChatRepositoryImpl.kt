@@ -194,6 +194,20 @@ class ChatRepositoryImpl(
         )
     }
 
+    override fun initializeWithContext(context: String) {
+        // Clear existing history
+        conversationHistory.clear()
+        currentSystemPrompt = null
+
+        // Add the context as a system message so AI has prior conversation context
+        val contextSystemMessage = Message(
+            role = "system",
+            content = context
+        )
+        conversationHistory.add(contextSystemMessage)
+        currentSystemPrompt = context
+    }
+
     /**
      * Ensure we have a valid authentication token for GigaChat
      */

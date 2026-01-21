@@ -23,4 +23,11 @@ interface ChatRepository {
      * Clear conversation history
      */
     fun clearHistory()
+
+    /**
+     * Initialize conversation history with a context message (e.g., summary).
+     * This sets up the conversation with prior context for continuation.
+     * @param context The context/summary to use as conversation foundation
+     */
+    fun initializeWithContext(context: String)
 }

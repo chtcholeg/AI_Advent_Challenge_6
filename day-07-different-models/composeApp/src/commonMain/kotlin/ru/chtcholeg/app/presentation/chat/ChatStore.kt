@@ -99,6 +99,7 @@ class ChatStore(
             is ChatIntent.CopyMessage -> copyMessage(intent.messageId)
             is ChatIntent.CopyAllMessages -> copyAllMessages()
             is ChatIntent.SummarizeChat -> summarizeChat()
+            is ChatIntent.SummarizeAndReplaceChat -> summarizeAndReplaceChat()
         }
     }
 
@@ -263,6 +264,94 @@ Provide a concise summary following the format specified in your instructions.""
                     it.copy(
                         isLoading = false,
                         error = "Failed to summarize: ${e.message ?: "Unknown error"}"
+                    )
+                }
+            } finally {
+                isSummarizing = false
+            }
+        }
+    }
+
+    private fun summarizeAndReplaceChat() {
+        val currentMessages = _state.value.messages
+            .filter { it.messageType != MessageType.SYSTEM }
+
+        // Need at least 2 messages (1 user + 1 AI) to summarize
+        if (currentMessages.size < 2) return
+        if (isSummarizing) return
+
+        isSummarizing = true
+        coroutineScope.launch {
+            _state.update { it.copy(isLoading = true, error = null) }
+
+            try {
+                // Format conversation for summarization
+                val conversationText = currentMessages.joinToString("\n\n") { message ->
+                    val sender = when (message.messageType) {
+                        MessageType.USER -> "User"
+                        MessageType.AI -> "AI"
+                        MessageType.SYSTEM -> "System"
+                    }
+                    "$sender: ${message.content}"
+                }
+
+                // Create summarization request
+                val summarizationRequest = """Please summarize the following conversation:
+
+---
+$conversationText
+---
+
+Provide a concise summary following the format specified in your instructions."""
+
+                // Get summary using custom system prompt
+                val response = chatRepository.sendMessageWithCustomSystemPrompt(
+                    userMessage = summarizationRequest,
+                    systemPrompt = AiSettings.SUMMARIZATION_SYSTEM_PROMPT
+                )
+
+                val summaryContent = response.content
+
+                // Clear the chat history in repository
+                chatRepository.clearHistory()
+
+                // Initialize repository with summary as context for continuation
+                val contextMessage = """Previous conversation summary (use this as context for continuing the conversation):
+
+$summaryContent
+
+---
+The user may now continue the conversation based on this context."""
+
+                chatRepository.initializeWithContext(contextMessage)
+
+                // Create system message for UI showing the summary
+                val summaryMessage = ChatMessage(
+                    content = "📋 **Conversation replaced with summary**\n\n$summaryContent\n\n---\n*You can now continue the conversation based on this summary.*",
+                    isFromUser = false,
+                    messageType = MessageType.SYSTEM,
+                    executionTimeMs = response.executionTimeMs,
+                    promptTokens = response.promptTokens,
+                    completionTokens = response.completionTokens,
+                    totalTokens = response.totalTokens
+                )
+
+                // Replace all messages with just the summary
+                _state.update {
+                    it.copy(
+                        messages = listOf(summaryMessage),
+                        isLoading = false
+                    )
+                }
+
+                // Reset counters
+                messagesSinceLastSummarization = 0
+                lastUserMessage = null
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        isLoading = false,
+                        error = "Failed to summarize and replace: ${e.message ?: "Unknown error"}"
                     )
                 }
             } finally {

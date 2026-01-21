@@ -1,6 +1,6 @@
 # GigaChat Multiplatform Chat Application (Day 7 - Response Metadata)
 
-A cross-platform chat application built with Kotlin Compose Multiplatform that integrates with GigaChat AI. The application runs on Android, Desktop (JVM), and Web (WasmJs).
+A cross-platform chat application built with Kotlin Compose Multiplatform that integrates with GigaChat AI. The application runs on Android and Desktop (JVM).
 
 ## New in Day 7: Response Metadata Display
 
@@ -27,7 +27,7 @@ This version adds detailed metadata for AI responses, helping users understand p
 ### Previous Features (from Day 6)
 
 #### Message Copying Features
-Full clipboard integration across all platforms (Android, Desktop, Web):
+Full clipboard integration across platforms (Android, Desktop):
 - Copy individual messages with one click
 - Copy entire conversation history in formatted text
 - Cross-platform support using native clipboard APIs
@@ -104,16 +104,11 @@ day-07-different-models/
 │       │       └── ru/chtcholeg/app/
 │       │           └── util/
 │       │               └── ClipboardManager.android.kt (actual)  # NEW
-│       ├── desktopMain/         # Desktop-specific code
-│       │   └── kotlin/
-│       │       └── ru/chtcholeg/app/
-│       │           └── util/
-│       │               └── ClipboardManager.desktop.kt (actual)  # NEW
-│       └── wasmJsMain/          # Web-specific code
+│       └── desktopMain/         # Desktop-specific code
 │           └── kotlin/
 │               └── ru/chtcholeg/app/
 │                   └── util/
-│                       └── ClipboardManager.wasmJs.kt (actual)
+│                       └── ClipboardManager.desktop.kt (actual)
 ├── gradle/
 ├── build.gradle.kts
 ├── settings.gradle.kts
@@ -172,7 +167,7 @@ The application uses Gradle properties to manage API credentials securely.
 ./gradlew build
 ```
 
-The BuildKonfig plugin will generate configuration constants from your `local.properties` file during the build process. These constants are embedded into the application for all platforms (Android, Desktop, Web).
+The BuildKonfig plugin will generate configuration constants from your `local.properties` file during the build process. These constants are embedded into the application for all platforms (Android, Desktop).
 
 ## Running the Application
 
@@ -207,15 +202,6 @@ adb shell am start -n ru.chtcholeg.app/.MainActivity
 2. Ensure `local.properties` is configured with your credentials
 3. Run the desktop main function (Shift + F10)
 
-### Web (WasmJs)
-
-```bash
-# Start development server
-./gradlew :composeApp:wasmJsBrowserDevelopmentRun
-```
-
-The application will open in your default browser at `http://localhost:8080`.
-
 **Note:** All platforms use the same credentials from `local.properties`, which are embedded at build time via the BuildKonfig plugin.
 
 ## Building Distributable Packages
@@ -244,17 +230,6 @@ The application will open in your default browser at `http://localhost:8080`.
 # - Linux: composeApp/build/compose/binaries/main/deb/
 ```
 
-### Web Build
-
-```bash
-# Production build
-./gradlew :composeApp:wasmJsBrowserProductionWebpack
-
-# Output: composeApp/build/dist/wasmJs/productionExecutable/
-```
-
-Deploy the contents of the output directory to your web server.
-
 ## Features
 
 - Real-time chat with GigaChat AI and HuggingFace models
@@ -265,7 +240,7 @@ Deploy the contents of the output directory to your web server.
 - **Message Copying** (Day 6):
   - Copy individual messages with one click
   - Copy entire conversation history
-  - Cross-platform clipboard support (Android, Desktop, Web)
+  - Cross-platform clipboard support (Android, Desktop)
   - Formatted export for easy sharing and analysis
 - **Temperature Parameter Testing** (Day 6):
   - Comprehensive guide with 6 test questions
@@ -300,7 +275,7 @@ Deploy the contents of the output directory to your web server.
   - Expert role identification
   - Relevant unicode symbols
   - Toggle between JSON and formatted view
-- Cross-platform support (Android, Desktop, Web)
+- Cross-platform support (Android, Desktop)
 - Clean MVI architecture
 - Conversation history management
 - Error handling with retry functionality

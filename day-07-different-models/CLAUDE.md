@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-GigaChat Multiplatform Chat Application - a cross-platform AI chat app built with Kotlin Compose Multiplatform supporting Android, Desktop (JVM), and Web (WasmJs). Integrates with GigaChat AI (Sberbank) and Hugging Face models.
+GigaChat Multiplatform Chat Application - a cross-platform AI chat app built with Kotlin Compose Multiplatform supporting Android and Desktop (JVM). Integrates with GigaChat AI (Sberbank) and Hugging Face models.
 
 **New Feature (day-02)**: Structured JSON Response Mode - AI can respond in strict JSON format with question summary, detailed response, expert role, and unicode symbols. Includes toggle between JSON and formatted view.
 
@@ -21,7 +21,7 @@ GigaChat Multiplatform Chat Application - a cross-platform AI chat app built wit
 **New Feature (day-06)**: Message Copying & Temperature Testing:
 - **Copy Individual Messages**: Each message has a copy button (📋 icon) for one-click copying to clipboard
 - **Copy Entire Conversation**: Button in TopAppBar to copy full chat history in formatted text
-- **Cross-Platform Clipboard Support**: Implemented via expect/actual pattern for Android, Desktop, and Web
+- **Cross-Platform Clipboard Support**: Implemented via expect/actual pattern for Android and Desktop
 - **Temperature Testing Guide**: QUESTIONS.md file with 6 curated questions to demonstrate temperature parameter effects (0, 0.7, 1.2)
 
 **New Feature (day-07)**: Response Metadata Display:
@@ -51,12 +51,6 @@ adb shell am start -n ru.chtcholeg.app/.MainActivity
 
 # Desktop - Launch JVM application
 ./gradlew :composeApp:runDesktop
-
-# Web - Start development server at localhost:8080
-./gradlew :composeApp:wasmJsBrowserDevelopmentRun
-
-# Web - Production build
-./gradlew :composeApp:wasmJsBrowserProductionWebpack
 ```
 
 ### Distribution Packages
@@ -137,7 +131,7 @@ These are loaded by `composeApp/build.gradle.kts` and embedded at build time via
 
 **Modules**:
 - **App Module** (common): HttpClient (Ktor with JSON, logging, 30s timeout), API implementations, repositories, use cases, ChatStore
-- **Platform Modules** (expect/actual): Android provides Application context, Desktop/WasmJs provide empty modules
+- **Platform Modules** (expect/actual): Android provides Application context, Desktop provides empty module
 
 **Key Singletons**:
 - HttpClient: Shared across all platforms with content negotiation, logging, timeout config
@@ -153,11 +147,9 @@ These are loaded by `composeApp/build.gradle.kts` and embedded at build time via
 **Platform-Specific Code**:
 - `androidMain/`: Application class, MainActivity, Activity Compose integration
 - `desktopMain/`: Desktop entry point (`main.kt` with Window configuration)
-- `wasmJsMain/`: Web entry point with Canvas-based rendering, custom index.html handling
 
 **Ktor Engines**:
 - Android/Desktop: OkHttp
-- Web: JS fetch API
 
 ## Key Implementation Patterns
 
@@ -197,7 +189,6 @@ The app supports multiple AI providers (GigaChat, Hugging Face) through:
 | **Clipboard (expect)** | `util/ClipboardManager.kt` |
 | **Clipboard (Android)** | `androidMain/.../util/ClipboardManager.android.kt` |
 | **Clipboard (Desktop)** | `desktopMain/.../util/ClipboardManager.desktop.kt` |
-| **Clipboard (Web)** | `wasmJsMain/.../util/ClipboardManager.wasmJs.kt` |
 | Build Config | `composeApp/build.gradle.kts` |
 | Main Entry (Desktop) | `desktopMain/kotlin/ru/chtcholeg/app/main.kt` |
 | Main Entry (Android) | `androidMain/kotlin/ru/chtcholeg/app/MainActivity.kt` |
@@ -225,7 +216,7 @@ The app supports multiple AI providers (GigaChat, Hugging Face) through:
 ### Platform-Specific Code
 Use expect/actual pattern:
 - Declare `expect` function in `commonMain`
-- Implement `actual` function in `androidMain`/`desktopMain`/`wasmJsMain`
+- Implement `actual` function in `androidMain`/`desktopMain`
 - Example: `di/PlatformModule.kt`, `util/ClipboardManager.kt`
 
 ### Response Metadata Display (NEW in day-07)
@@ -262,8 +253,6 @@ The clipboard functionality is implemented using expect/actual pattern:
 3. **Desktop Implementation** (`ClipboardManager.desktop.kt`):
    - Uses `java.awt.Toolkit.getDefaultToolkit().systemClipboard`
    - Uses `StringSelection` for clipboard content
-4. **Web Implementation** (`ClipboardManager.wasmJs.kt`):
-   - Uses browser's `window.navigator.clipboard.writeText()` API
 
 To use clipboard in code:
 ```kotlin
@@ -281,10 +270,6 @@ ClipboardManager.copyToClipboard("Text to copy")
 ### Empty Credentials
 **Symptom**: Build succeeds but app shows authentication errors
 **Fix**: Ensure `local.properties` exists with valid credentials, then run `./gradlew clean build`
-
-### Web Build Index.html Missing
-**Symptom**: Web app shows blank page
-**Fix**: Custom copy tasks `copyWasmIndexHtml` and `copyWasmIndexHtmlProduction` handle this automatically. Verify `src/wasmJsMain/resources/index.html` exists.
 
 ### Koin Injection Failures
 **Symptom**: `NoBeanDefFoundException`

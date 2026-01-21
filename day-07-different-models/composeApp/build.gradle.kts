@@ -1,7 +1,6 @@
 import com.codingfeline.buildkonfig.compiler.FieldSpec.Type.STRING
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
-import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Properties
 
@@ -39,17 +38,6 @@ kotlin {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_17)
         }
-    }
-
-    @OptIn(ExperimentalWasmDsl::class)
-    wasmJs {
-        moduleName = "composeApp"
-        browser {
-            commonWebpackConfig {
-                outputFileName = "composeApp.js"
-            }
-        }
-        binaries.executable()
     }
 
     sourceSets {
@@ -94,23 +82,17 @@ kotlin {
                 implementation(libs.ktor.client.okhttp)
             }
         }
-
-        val wasmJsMain by getting {
-            dependencies {
-                implementation(libs.ktor.client.js)
-            }
-        }
     }
 }
 
 android {
     namespace = "ru.chtcholeg.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "ru.chtcholeg.app"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
     }
@@ -167,23 +149,4 @@ buildkonfig {
         buildConfigField(STRING, "GIGACHAT_CLIENT_SECRET", gigachatClientSecret)
         buildConfigField(STRING, "HUGGINGFACE_API_TOKEN", huggingfaceApiToken)
     }
-}
-
-// Copy index.html to webpack output directory
-tasks.register<Copy>("copyWasmIndexHtml") {
-    from("src/wasmJsMain/resources/index.html")
-    into(layout.buildDirectory.dir("kotlin-webpack/wasmJs/developmentExecutable"))
-}
-
-tasks.register<Copy>("copyWasmIndexHtmlProduction") {
-    from("src/wasmJsMain/resources/index.html")
-    into(layout.buildDirectory.dir("kotlin-webpack/wasmJs/productionExecutable"))
-}
-
-tasks.named("wasmJsBrowserDevelopmentWebpack") {
-    finalizedBy("copyWasmIndexHtml")
-}
-
-tasks.named("wasmJsBrowserProductionWebpack") {
-    finalizedBy("copyWasmIndexHtmlProduction")
 }

@@ -5,6 +5,7 @@ import ru.chtcholeg.app.data.repository.SettingsRepository
 import ru.chtcholeg.app.domain.model.AiSettings
 import ru.chtcholeg.app.domain.model.ChatMessage
 import ru.chtcholeg.app.domain.model.MessageType
+import ru.chtcholeg.app.domain.model.Model
 import ru.chtcholeg.app.domain.model.ResponseMode
 import ru.chtcholeg.app.domain.usecase.SendMessageUseCase
 import ru.chtcholeg.app.util.ClipboardManager
@@ -34,6 +35,9 @@ class ChatStore(
         coroutineScope.launch {
             settingsRepository.settings.collect { settings ->
                 handleResponseModeChange(settings.responseMode)
+                // Update current model name
+                val model = Model.fromId(settings.model) ?: Model.GigaChat
+                _state.update { it.copy(currentModelName = model.displayName) }
             }
         }
     }

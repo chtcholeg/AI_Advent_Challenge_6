@@ -2,19 +2,29 @@
 
 A cross-platform chat application built with Kotlin Compose Multiplatform that integrates with GigaChat AI. The application runs on Android and Desktop (JVM).
 
-## New in Day 8: Improved Token Display
+## New in Day 8: UI/UX Improvements
 
-This version improves the token usage display to make it more descriptive and user-friendly:
+This version brings several UI/UX improvements for better user experience:
 
 ### Enhanced Token Labels
-- Token breakdown now includes descriptive labels
+- Token breakdown now uses intuitive arrow icons
 - **Before:** "156 tokens (42+114)"
-- **After:** "156 tokens (42 prompt + 114 completion)"
+- **After:** "156 tokens (↑42 + ↓114)"
+- ↑ = prompt tokens (input), ↓ = completion tokens (output)
 
-### Why This Matters
+### Model Name in Header
+- Current AI model name is now displayed in the app header
+- Shows under "AI Chat" title with smaller, semi-transparent text
+- Updates automatically when model is changed in settings
+
+### Response Trimming
+- AI responses are automatically trimmed to remove leading/trailing whitespace
+- Cleaner message display without extra spaces
+
+### Why These Changes Matter
 - **Clarity**: Users immediately understand what each number represents
-- **Learning**: Helps users understand the distinction between prompt and completion tokens
-- **Debugging**: Easier to identify if prompts are too long or responses are being truncated
+- **Awareness**: Always know which AI model is currently active
+- **Polish**: Cleaner UI without whitespace issues
 
 ### Previous Features (from Day 7)
 
@@ -242,9 +252,10 @@ adb shell am start -n ru.chtcholeg.app/.MainActivity
 ## Features
 
 - Real-time chat with GigaChat AI and HuggingFace models
-- **Enhanced Token Display** (NEW in Day 8):
-  - Token breakdown with descriptive labels: "42 prompt + 114 completion"
-  - Clearer understanding of token usage
+- **UI/UX Improvements** (NEW in Day 8):
+  - Token breakdown with arrow icons: "↑42 + ↓114" (↑=input, ↓=output)
+  - Model name displayed in app header
+  - Automatic whitespace trimming in AI responses
 - **Response Metadata** (Day 7):
   - Execution time display for each AI response
   - Token usage breakdown (prompt + completion tokens)

@@ -96,7 +96,18 @@ fun ChatScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("AI Chat") },
+                title = {
+                    Column {
+                        Text("AI Chat")
+                        if (state.currentModelName.isNotEmpty()) {
+                            Text(
+                                text = state.currentModelName,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = ChatColors.HeaderText.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                },
                 actions = {
                     IconButton(onClick = onNavigateToSettings) {
                         Icon(

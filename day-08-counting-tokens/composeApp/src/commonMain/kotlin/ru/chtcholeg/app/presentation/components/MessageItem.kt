@@ -147,7 +147,7 @@ fun MessageItem(
                                 val tokensText = buildString {
                                     append("$total tokens")
                                     if (message.promptTokens != null && message.completionTokens != null) {
-                                        append(" (${message.promptTokens} prompt + ${message.completionTokens} completion)")
+                                        append(" (↑${message.promptTokens} + ↓${message.completionTokens})")
                                     }
                                 }
                                 Text(

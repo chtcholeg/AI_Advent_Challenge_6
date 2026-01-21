@@ -30,9 +30,10 @@ GigaChat Multiplatform Chat Application - a cross-platform AI chat app built wit
 - **AiResponse Model**: New domain model class to return response with metadata from repository
 - **measureTimedValue**: Kotlin time measurement for accurate execution timing
 
-**New Feature (day-08)**: Enhanced Token Display:
-- **Descriptive Labels**: Token breakdown now shows "42 prompt + 114 completion" instead of "42+114"
-- **Improved Clarity**: Users immediately understand what each number represents
+**New Feature (day-08)**: UI/UX Improvements:
+- **Arrow Icons for Tokens**: Token breakdown now shows "↑42 + ↓114" (↑=prompt/input, ↓=completion/output)
+- **Model Name in Header**: Current AI model name displayed under "AI Chat" title
+- **Response Trimming**: AI responses automatically trimmed to remove leading/trailing whitespace
 
 Response modes (Normal, JSON, XML, Dialog, Step-by-Step, Expert Panel) are mutually exclusive through dropdown menu selection.
 
@@ -244,7 +245,7 @@ The application displays execution time and token usage for each AI response:
 - >= 60s: "1m 15s"
 
 **Token Display:**
-- "156 tokens (42 prompt + 114 completion)" shows total with descriptive breakdown **(UPDATED in day-08)**
+- "156 tokens (↑42 + ↓114)" shows total with arrow icons (↑=input, ↓=output) **(UPDATED in day-08)**
 - Only displayed when API returns usage data
 
 ### Adding Clipboard Functionality

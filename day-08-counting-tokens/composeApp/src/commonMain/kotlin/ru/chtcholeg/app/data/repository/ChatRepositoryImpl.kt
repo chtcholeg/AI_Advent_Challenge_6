@@ -128,7 +128,7 @@ class ChatRepositoryImpl(
         conversationHistory.add(aiMessage)
 
         return AiResponse(
-            content = aiMessage.content,
+            content = aiMessage.content.trim(),
             executionTimeMs = executionTimeMs,
             promptTokens = response.usage?.promptTokens,
             completionTokens = response.usage?.completionTokens,
@@ -186,7 +186,7 @@ class ChatRepositoryImpl(
             ?: throw IllegalStateException("No response from AI")
 
         return AiResponse(
-            content = aiMessage.content,
+            content = aiMessage.content.trim(),
             executionTimeMs = executionTimeMs,
             promptTokens = response.usage?.promptTokens,
             completionTokens = response.usage?.completionTokens,

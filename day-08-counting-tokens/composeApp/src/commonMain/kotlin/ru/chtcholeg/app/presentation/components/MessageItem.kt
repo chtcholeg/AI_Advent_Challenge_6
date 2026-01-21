@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,7 +38,7 @@ import ru.chtcholeg.app.domain.model.ChatMessage
 import ru.chtcholeg.app.domain.model.MessageType
 import ru.chtcholeg.app.domain.model.StructuredResponse
 import ru.chtcholeg.app.domain.model.StructuredXmlResponse
-import ru.chtcholeg.app.presentation.theme.ChatColors
+import ru.chtcholeg.app.presentation.theme.chatColors
 
 @Composable
 fun MessageItem(
@@ -45,7 +46,8 @@ fun MessageItem(
     onCopyMessage: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // System messages are displayed centered
+    val colors = chatColors()
+
     val arrangement = when (message.messageType) {
         MessageType.SYSTEM -> Arrangement.Center
         MessageType.USER -> Arrangement.End
@@ -55,36 +57,58 @@ fun MessageItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 6.dp),
         horizontalArrangement = arrangement
     ) {
         BoxWithConstraints {
+            val bubbleShape = when (message.messageType) {
+                MessageType.SYSTEM -> RoundedCornerShape(24.dp)
+                MessageType.USER -> RoundedCornerShape(
+                    topStart = 24.dp,
+                    topEnd = 24.dp,
+                    bottomStart = 24.dp,
+                    bottomEnd = 6.dp
+                )
+                MessageType.AI -> RoundedCornerShape(
+                    topStart = 24.dp,
+                    topEnd = 24.dp,
+                    bottomStart = 6.dp,
+                    bottomEnd = 24.dp
+                )
+            }
+
+            val bubbleColor = when (message.messageType) {
+                MessageType.USER -> colors.userBubbleBackground
+                MessageType.AI -> colors.aiBubbleBackground
+                MessageType.SYSTEM -> colors.systemBubbleBackground
+            }
+
+            val textColor = when (message.messageType) {
+                MessageType.USER -> colors.userBubbleText
+                MessageType.AI -> colors.aiBubbleText
+                MessageType.SYSTEM -> colors.systemBubbleText
+            }
+
+            val timestampColor = when (message.messageType) {
+                MessageType.USER -> colors.userBubbleTimestamp
+                MessageType.AI -> colors.aiBubbleTimestamp
+                MessageType.SYSTEM -> colors.systemBubbleTimestamp
+            }
+
             Box(
                 modifier = Modifier
-                    .widthIn(max = if (message.messageType == MessageType.SYSTEM) maxWidth * 0.9f else maxWidth * 0.75f)
-                    .background(
-                        color = when (message.messageType) {
-                            MessageType.USER -> ChatColors.UserBubbleBackground
-                            MessageType.AI -> ChatColors.AiBubbleBackground
-                            MessageType.SYSTEM -> ChatColors.SystemBubbleBackground
-                        },
-                        shape = when (message.messageType) {
-                            MessageType.SYSTEM -> RoundedCornerShape(16.dp)
-                            MessageType.USER -> RoundedCornerShape(
-                                topStart = 16.dp,
-                                topEnd = 16.dp,
-                                bottomStart = 16.dp,
-                                bottomEnd = 4.dp
-                            )
-                            MessageType.AI -> RoundedCornerShape(
-                                topStart = 16.dp,
-                                topEnd = 16.dp,
-                                bottomStart = 4.dp,
-                                bottomEnd = 16.dp
-                            )
-                        }
+                    .widthIn(max = if (message.messageType == MessageType.SYSTEM) maxWidth * 0.9f else maxWidth * 0.8f)
+                    .shadow(
+                        elevation = 2.dp,
+                        shape = bubbleShape,
+                        ambientColor = colors.divider,
+                        spotColor = colors.divider
                     )
-                    .padding(12.dp)
+                    .background(
+                        color = bubbleColor,
+                        shape = bubbleShape
+                    )
+                    .padding(16.dp)
             ) {
                 val alignment = when (message.messageType) {
                     MessageType.USER -> Alignment.CenterEnd
@@ -93,45 +117,44 @@ fun MessageItem(
                 }
 
                 Column(modifier = Modifier.align(alignment)) {
-                    // Check if this is a structured JSON or XML response
                     val isJsonResponse = message.messageType == MessageType.AI &&
                         StructuredResponse.looksLikeStructuredResponse(message.content)
                     val isXmlResponse = message.messageType == MessageType.AI &&
                         StructuredXmlResponse.looksLikeStructuredXmlResponse(message.content)
 
                     when {
-                        isJsonResponse -> StructuredJsonMessageContent(message = message)
-                        isXmlResponse -> StructuredXmlMessageContent(message = message)
+                        isJsonResponse -> StructuredJsonMessageContent(
+                            message = message,
+                            textColor = textColor,
+                            accentColor = colors.primaryAccent
+                        )
+                        isXmlResponse -> StructuredXmlMessageContent(
+                            message = message,
+                            textColor = textColor,
+                            accentColor = colors.primaryAccent
+                        )
                         else -> {
-                            // Regular message display
                             Text(
                                 text = message.content,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = when (message.messageType) {
-                                    MessageType.USER -> ChatColors.UserBubbleText
-                                    MessageType.AI -> ChatColors.AiBubbleText
-                                    MessageType.SYSTEM -> ChatColors.SystemBubbleText
-                                },
+                                color = textColor
                             )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                    // Show execution time and tokens for AI messages
                     if (message.messageType == MessageType.AI && (message.executionTimeMs != null || message.totalTokens != null)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.Start,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val metadataColor = ChatColors.AiBubbleTimestamp
-
                             message.executionTimeMs?.let { timeMs ->
                                 Text(
                                     text = formatExecutionTime(timeMs),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = metadataColor
+                                    color = timestampColor
                                 )
                             }
 
@@ -139,7 +162,7 @@ fun MessageItem(
                                 Text(
                                     text = " | ",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = metadataColor
+                                    color = timestampColor
                                 )
                             }
 
@@ -153,11 +176,11 @@ fun MessageItem(
                                 Text(
                                     text = tokensText,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = metadataColor
+                                    color = timestampColor
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(2.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
                     }
 
                     Row(
@@ -168,26 +191,18 @@ fun MessageItem(
                         Text(
                             text = formatTimestamp(message.timestamp),
                             style = MaterialTheme.typography.labelSmall,
-                            color = when (message.messageType) {
-                                MessageType.USER -> ChatColors.UserBubbleTimestamp
-                                MessageType.AI -> ChatColors.AiBubbleTimestamp
-                                MessageType.SYSTEM -> ChatColors.SystemBubbleTimestamp
-                            },
+                            color = timestampColor
                         )
 
                         IconButton(
                             onClick = { onCopyMessage(message.id) },
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(28.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Share,
                                 contentDescription = "Copy message",
                                 modifier = Modifier.size(16.dp),
-                                tint = when (message.messageType) {
-                                    MessageType.USER -> ChatColors.UserBubbleTimestamp
-                                    MessageType.AI -> ChatColors.AiBubbleTimestamp
-                                    MessageType.SYSTEM -> ChatColors.SystemBubbleTimestamp
-                                }
+                                tint = timestampColor
                             )
                         }
                     }
@@ -198,14 +213,17 @@ fun MessageItem(
 }
 
 @Composable
-private fun StructuredJsonMessageContent(message: ChatMessage) {
+private fun StructuredJsonMessageContent(
+    message: ChatMessage,
+    textColor: androidx.compose.ui.graphics.Color,
+    accentColor: androidx.compose.ui.graphics.Color
+) {
     var showFormatted by remember { mutableStateOf(false) }
     val structuredResponse = remember(message.content, showFormatted) {
         if (showFormatted) StructuredResponse.tryParse(message.content) else null
     }
 
     Column {
-        // Toggle button row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -214,7 +232,7 @@ private fun StructuredJsonMessageContent(message: ChatMessage) {
             Text(
                 text = if (showFormatted) "Formatted View" else "JSON View",
                 style = MaterialTheme.typography.labelMedium,
-                color = ChatColors.AiBubbleText.copy(alpha = 0.7f)
+                color = textColor.copy(alpha = 0.7f)
             )
             TextButton(
                 onClick = { showFormatted = !showFormatted }
@@ -222,28 +240,26 @@ private fun StructuredJsonMessageContent(message: ChatMessage) {
                 Text(
                     text = if (showFormatted) "Show JSON" else "Format",
                     style = MaterialTheme.typography.labelSmall,
-                    color = ChatColors.AiBubbleText
+                    color = accentColor
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Content display
         if (showFormatted && structuredResponse != null) {
-            // Formatted view
             FormattedStructuredContent(
                 unicodeSymbols = structuredResponse.unicodeSymbols,
                 questionShort = structuredResponse.questionShort,
                 answer = structuredResponse.response,
-                responderRole = structuredResponse.responderRole
+                responderRole = structuredResponse.responderRole,
+                textColor = textColor
             )
         } else {
-            // JSON view (or failed to parse)
             Text(
                 text = message.content,
                 style = MaterialTheme.typography.bodyMedium,
-                color = ChatColors.AiBubbleText
+                color = textColor
             )
 
             if (showFormatted && structuredResponse == null) {
@@ -251,7 +267,7 @@ private fun StructuredJsonMessageContent(message: ChatMessage) {
                 Text(
                     text = "Failed to parse JSON",
                     style = MaterialTheme.typography.labelSmall,
-                    color = ChatColors.AiBubbleText.copy(alpha = 0.5f),
+                    color = textColor.copy(alpha = 0.5f),
                     fontStyle = FontStyle.Italic
                 )
             }
@@ -260,14 +276,17 @@ private fun StructuredJsonMessageContent(message: ChatMessage) {
 }
 
 @Composable
-private fun StructuredXmlMessageContent(message: ChatMessage) {
+private fun StructuredXmlMessageContent(
+    message: ChatMessage,
+    textColor: androidx.compose.ui.graphics.Color,
+    accentColor: androidx.compose.ui.graphics.Color
+) {
     var showFormatted by remember { mutableStateOf(false) }
     val structuredResponse = remember(message.content, showFormatted) {
         if (showFormatted) StructuredXmlResponse.tryParse(message.content) else null
     }
 
     Column {
-        // Toggle button row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -276,7 +295,7 @@ private fun StructuredXmlMessageContent(message: ChatMessage) {
             Text(
                 text = if (showFormatted) "Formatted View" else "XML View",
                 style = MaterialTheme.typography.labelMedium,
-                color = ChatColors.AiBubbleText.copy(alpha = 0.7f)
+                color = textColor.copy(alpha = 0.7f)
             )
             TextButton(
                 onClick = { showFormatted = !showFormatted }
@@ -284,28 +303,26 @@ private fun StructuredXmlMessageContent(message: ChatMessage) {
                 Text(
                     text = if (showFormatted) "Show XML" else "Format",
                     style = MaterialTheme.typography.labelSmall,
-                    color = ChatColors.AiBubbleText
+                    color = accentColor
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Content display
         if (showFormatted && structuredResponse != null) {
-            // Formatted view
             FormattedStructuredContent(
                 unicodeSymbols = structuredResponse.unicodeSymbols,
                 questionShort = structuredResponse.questionShort,
                 answer = structuredResponse.answer,
-                responderRole = structuredResponse.responderRole
+                responderRole = structuredResponse.responderRole,
+                textColor = textColor
             )
         } else {
-            // XML view (or failed to parse)
             Text(
                 text = message.content,
                 style = MaterialTheme.typography.bodyMedium,
-                color = ChatColors.AiBubbleText
+                color = textColor
             )
 
             if (showFormatted && structuredResponse == null) {
@@ -313,7 +330,7 @@ private fun StructuredXmlMessageContent(message: ChatMessage) {
                 Text(
                     text = "Failed to parse XML",
                     style = MaterialTheme.typography.labelSmall,
-                    color = ChatColors.AiBubbleText.copy(alpha = 0.5f),
+                    color = textColor.copy(alpha = 0.5f),
                     fontStyle = FontStyle.Italic
                 )
             }
@@ -326,69 +343,61 @@ private fun FormattedStructuredContent(
     unicodeSymbols: String,
     questionShort: String,
     answer: String,
-    responderRole: String
+    responderRole: String,
+    textColor: androidx.compose.ui.graphics.Color
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Unicode symbols
         Text(
             text = unicodeSymbols,
             style = MaterialTheme.typography.headlineMedium,
-            color = ChatColors.AiBubbleText
+            color = textColor
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Question short
-        Row {
-            Text(
-                text = "Вопрос коротко: ",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = ChatColors.AiBubbleText
-            )
-            Text(
-                text = questionShort,
-                style = MaterialTheme.typography.bodyMedium,
-                fontStyle = FontStyle.Italic,
-                color = ChatColors.AiBubbleText
-            )
-        }
+        Text(
+            text = "Вопрос коротко:",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = textColor.copy(alpha = 0.7f)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = questionShort,
+            style = MaterialTheme.typography.bodyMedium,
+            color = textColor
+        )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Answer
-        Column {
-            Text(
-                text = "Ответ:",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = ChatColors.AiBubbleText
-            )
-            Text(
-                text = answer,
-                style = MaterialTheme.typography.bodyMedium,
-                fontStyle = FontStyle.Italic,
-                color = ChatColors.AiBubbleText
-            )
-        }
+        Text(
+            text = "Ответ:",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = textColor.copy(alpha = 0.7f)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = answer,
+            style = MaterialTheme.typography.bodyMedium,
+            color = textColor
+        )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-        // Responder role
-        Row {
-            Text(
-                text = "Ответил на него: ",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = ChatColors.AiBubbleText
-            )
-            Text(
-                text = responderRole,
-                style = MaterialTheme.typography.bodyMedium,
-                fontStyle = FontStyle.Italic,
-                color = ChatColors.AiBubbleText
-            )
-        }
+        Text(
+            text = "Ответил на него:",
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = textColor.copy(alpha = 0.7f)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = responderRole,
+            style = MaterialTheme.typography.bodyMedium,
+            fontStyle = FontStyle.Italic,
+            color = textColor
+        )
     }
 }
 

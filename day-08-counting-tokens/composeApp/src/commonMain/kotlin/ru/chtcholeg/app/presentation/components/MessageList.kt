@@ -17,11 +17,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ru.chtcholeg.app.domain.model.ChatMessage
-import ru.chtcholeg.app.presentation.theme.ChatColors
+import ru.chtcholeg.app.presentation.theme.chatColors
 
 @Composable
 fun MessageList(
@@ -30,29 +29,20 @@ fun MessageList(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
+    val colors = chatColors()
 
-    // Auto-scroll to bottom when new messages arrive
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
     }
 
-    val gradientBrush = Brush.verticalGradient(
-        colors = listOf(
-            ChatColors.BackgroundGradientTop,
-            ChatColors.BackgroundGradientMiddle,
-            ChatColors.BackgroundGradientBottom
-        )
-    )
-
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(brush = gradientBrush)
+            .background(colors.background)
     ) {
         if (messages.isEmpty()) {
-            // Empty state
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -79,7 +69,7 @@ fun MessageList(
             LazyColumn(
                 state = listState,
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(vertical = 8.dp)
+                contentPadding = PaddingValues(vertical = 12.dp)
             ) {
                 items(
                     items = messages,

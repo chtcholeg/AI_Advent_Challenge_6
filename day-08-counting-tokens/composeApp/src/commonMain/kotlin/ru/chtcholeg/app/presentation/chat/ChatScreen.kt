@@ -37,7 +37,7 @@ import androidx.compose.ui.unit.dp
 import ru.chtcholeg.app.domain.model.MessageType
 import ru.chtcholeg.app.presentation.components.MessageInput
 import ru.chtcholeg.app.presentation.components.MessageList
-import ru.chtcholeg.app.presentation.theme.ChatColors
+import ru.chtcholeg.app.presentation.theme.chatColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,25 +47,35 @@ fun ChatScreen(
     modifier: Modifier = Modifier
 ) {
     val state by store.state.collectAsState()
+    val colors = chatColors()
     var showSummarizeDialog by remember { mutableStateOf(false) }
 
-    // Summarization dialog
     if (showSummarizeDialog) {
         AlertDialog(
             onDismissRequest = { showSummarizeDialog = false },
-            title = { Text("Summarize Conversation") },
+            title = {
+                Text(
+                    text = "Summarize Conversation",
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
             text = {
                 Column {
-                    Text("Choose how to summarize the conversation:")
+                    Text(
+                        text = "Choose how to summarize:",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Add Summary — keeps chat and adds summary at the end",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Add Summary - keeps the current chat and adds a summary at the end",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Replace with Summary - replaces the entire chat with the summary, allowing you to continue the conversation based on it",
-                        style = MaterialTheme.typography.bodySmall
+                        text = "Replace — replaces entire chat with summary",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             },
@@ -76,7 +86,10 @@ fun ChatScreen(
                         store.dispatch(ChatIntent.SummarizeAndReplaceChat)
                     }
                 ) {
-                    Text("Replace with Summary")
+                    Text(
+                        text = "Replace",
+                        color = colors.primaryAccent
+                    )
                 }
             },
             dismissButton = {
@@ -86,9 +99,15 @@ fun ChatScreen(
                         store.dispatch(ChatIntent.SummarizeChat)
                     }
                 ) {
-                    Text("Add Summary")
+                    Text(
+                        text = "Add Summary",
+                        color = colors.primaryAccent
+                    )
                 }
-            }
+            },
+            containerColor = colors.surface,
+            titleContentColor = colors.headerText,
+            textContentColor = colors.headerText
         )
     }
 
@@ -98,12 +117,15 @@ fun ChatScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text("AI Chat")
+                        Text(
+                            text = "AI Chat",
+                            style = MaterialTheme.typography.titleLarge
+                        )
                         if (state.currentModelName.isNotEmpty()) {
                             Text(
                                 text = state.currentModelName,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = ChatColors.HeaderText.copy(alpha = 0.7f)
+                                color = colors.headerText.copy(alpha = 0.6f)
                             )
                         }
                     }
@@ -144,22 +166,22 @@ fun ChatScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = ChatColors.HeaderBackground,
-                    titleContentColor = ChatColors.HeaderText,
-                    actionIconContentColor = ChatColors.HeaderText
+                    containerColor = colors.headerBackground,
+                    titleContentColor = colors.headerText,
+                    actionIconContentColor = colors.headerText
                 )
             )
         },
         bottomBar = {
             Column {
-                // Show loading indicator
                 if (state.isLoading) {
                     LinearProgressIndicator(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        color = colors.primaryAccent,
+                        trackColor = colors.divider
                     )
                 }
 
-                // Show error message with retry button
                 state.error?.let { error ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),

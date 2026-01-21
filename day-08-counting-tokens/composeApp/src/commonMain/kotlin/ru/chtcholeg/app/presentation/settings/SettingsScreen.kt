@@ -13,10 +13,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -27,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -43,7 +47,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.unit.dp
 import org.koin.compose.koinInject
 import ru.chtcholeg.app.data.repository.SettingsRepository
@@ -51,7 +55,7 @@ import ru.chtcholeg.app.domain.model.AiSettings
 import ru.chtcholeg.app.domain.model.Model
 import ru.chtcholeg.app.domain.model.ResponseMode
 import ru.chtcholeg.app.presentation.components.PlatformVerticalScrollbar
-import ru.chtcholeg.app.presentation.theme.ChatColors
+import ru.chtcholeg.app.presentation.theme.chatColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,12 +65,18 @@ fun SettingsScreen(
 ) {
     val settingsRepository: SettingsRepository = koinInject()
     val settings by settingsRepository.settings.collectAsState()
+    val colors = chatColors()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("AI Settings") },
+                title = {
+                    Text(
+                        text = "AI Settings",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -84,132 +94,128 @@ fun SettingsScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = ChatColors.HeaderBackground,
-                    titleContentColor = ChatColors.HeaderText,
-                    navigationIconContentColor = ChatColors.HeaderText,
-                    actionIconContentColor = ChatColors.HeaderText
+                    containerColor = colors.headerBackground,
+                    titleContentColor = colors.headerText,
+                    navigationIconContentColor = colors.headerText,
+                    actionIconContentColor = colors.headerText
                 )
             )
         }
     ) { paddingValues ->
-        val gradientBrush = Brush.verticalGradient(
-            colors = listOf(
-                ChatColors.BackgroundGradientTop,
-                ChatColors.BackgroundGradientMiddle,
-                ChatColors.BackgroundGradientBottom
-            )
-        )
-
         val scrollState = rememberScrollState()
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(brush = gradientBrush)
+                .background(colors.background)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(scrollState)
                     .padding(16.dp)
-                    .padding(end = 12.dp), // Add padding for scrollbar
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                    .padding(end = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-            Text(
-                text = "Configure AI model parameters",
-                style = MaterialTheme.typography.bodyLarge,
-                color = ChatColors.HeaderBackground
-            )
+                Text(
+                    text = "Configure AI model parameters",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = colors.headerText.copy(alpha = 0.7f)
+                )
 
-            // Model selection
-            ModelSelector(
-                currentModel = settings.model,
-                onModelChange = { model ->
-                    settingsRepository.updateSettings(settings.copy(model = model))
+                SettingsCard {
+                    ModelSelector(
+                        currentModel = settings.model,
+                        onModelChange = { model ->
+                            settingsRepository.updateSettings(settings.copy(model = model))
+                        }
+                    )
                 }
-            )
 
-            HorizontalDivider()
+                SettingsCard {
+                    ResponseModeSelector(
+                        currentMode = settings.responseMode,
+                        onModeChange = { mode ->
+                            settingsRepository.updateSettings(settings.copy(responseMode = mode))
+                        }
+                    )
 
-            // Response Mode selector
-            ResponseModeSelector(
-                currentMode = settings.responseMode,
-                onModeChange = { mode ->
-                    settingsRepository.updateSettings(settings.copy(responseMode = mode))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    HorizontalDivider(color = colors.divider)
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    PreserveHistorySetting(
+                        isEnabled = settings.preserveHistoryOnSystemPromptChange,
+                        onToggle = { enabled ->
+                            settingsRepository.updateSettings(settings.copy(preserveHistoryOnSystemPromptChange = enabled))
+                        }
+                    )
                 }
-            )
 
-            // Preserve History Setting
-            PreserveHistorySetting(
-                isEnabled = settings.preserveHistoryOnSystemPromptChange,
-                onToggle = { enabled ->
-                    settingsRepository.updateSettings(settings.copy(preserveHistoryOnSystemPromptChange = enabled))
+                SettingsCard {
+                    SummarizationSettings(
+                        isEnabled = settings.summarizationEnabled,
+                        messageThreshold = settings.summarizationMessageThreshold,
+                        onToggle = { enabled ->
+                            settingsRepository.updateSettings(settings.copy(summarizationEnabled = enabled))
+                        },
+                        onThresholdChange = { threshold ->
+                            settingsRepository.updateSettings(settings.copy(summarizationMessageThreshold = threshold))
+                        }
+                    )
                 }
-            )
 
-            HorizontalDivider()
+                SettingsCard {
+                    SliderSetting(
+                        label = "Temperature",
+                        value = settings.temperature ?: AiSettings.DEFAULT_TEMPERATURE,
+                        valueRange = AiSettings.MIN_TEMPERATURE..AiSettings.MAX_TEMPERATURE,
+                        steps = 19,
+                        description = "Controls randomness. Higher values make output more random.",
+                        onValueChange = { value ->
+                            settingsRepository.updateSettings(settings.copy(temperature = value))
+                        }
+                    )
 
-            // Summarization Settings
-            SummarizationSettings(
-                isEnabled = settings.summarizationEnabled,
-                messageThreshold = settings.summarizationMessageThreshold,
-                onToggle = { enabled ->
-                    settingsRepository.updateSettings(settings.copy(summarizationEnabled = enabled))
-                },
-                onThresholdChange = { threshold ->
-                    settingsRepository.updateSettings(settings.copy(summarizationMessageThreshold = threshold))
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    SliderSetting(
+                        label = "Top P",
+                        value = settings.topP ?: AiSettings.DEFAULT_TOP_P,
+                        valueRange = AiSettings.MIN_TOP_P..AiSettings.MAX_TOP_P,
+                        steps = 9,
+                        description = "Nucleus sampling threshold. Controls diversity of responses.",
+                        onValueChange = { value ->
+                            settingsRepository.updateSettings(settings.copy(topP = value))
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    IntSliderSetting(
+                        label = "Max Tokens",
+                        value = settings.maxTokens ?: AiSettings.DEFAULT_MAX_TOKENS,
+                        valueRange = AiSettings.MIN_MAX_TOKENS..AiSettings.MAX_MAX_TOKENS,
+                        description = "Maximum length of generated response.",
+                        onValueChange = { value ->
+                            settingsRepository.updateSettings(settings.copy(maxTokens = value))
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    SliderSetting(
+                        label = "Repetition Penalty",
+                        value = settings.repetitionPenalty ?: AiSettings.DEFAULT_REPETITION_PENALTY,
+                        valueRange = AiSettings.MIN_REPETITION_PENALTY..AiSettings.MAX_REPETITION_PENALTY,
+                        steps = 19,
+                        description = "Penalizes repeating tokens. Higher values reduce repetition.",
+                        onValueChange = { value ->
+                            settingsRepository.updateSettings(settings.copy(repetitionPenalty = value))
+                        }
+                    )
                 }
-            )
-
-            HorizontalDivider()
-
-            // Temperature slider
-            SliderSetting(
-                label = "Temperature",
-                value = settings.temperature ?: AiSettings.DEFAULT_TEMPERATURE,
-                valueRange = AiSettings.MIN_TEMPERATURE..AiSettings.MAX_TEMPERATURE,
-                steps = 19, // 20 steps for 0.1 increments
-                description = "Controls randomness. Higher values make output more random.",
-                onValueChange = { value ->
-                    settingsRepository.updateSettings(settings.copy(temperature = value))
-                }
-            )
-
-            // Top P slider
-            SliderSetting(
-                label = "Top P",
-                value = settings.topP ?: AiSettings.DEFAULT_TOP_P,
-                valueRange = AiSettings.MIN_TOP_P..AiSettings.MAX_TOP_P,
-                steps = 9, // 10 steps for 0.1 increments
-                description = "Nucleus sampling threshold. Controls diversity of responses.",
-                onValueChange = { value ->
-                    settingsRepository.updateSettings(settings.copy(topP = value))
-                }
-            )
-
-            // Max Tokens slider
-            IntSliderSetting(
-                label = "Max Tokens",
-                value = settings.maxTokens ?: AiSettings.DEFAULT_MAX_TOKENS,
-                valueRange = AiSettings.MIN_MAX_TOKENS..AiSettings.MAX_MAX_TOKENS,
-                description = "Maximum length of generated response.",
-                onValueChange = { value ->
-                    settingsRepository.updateSettings(settings.copy(maxTokens = value))
-                }
-            )
-
-            // Repetition Penalty slider
-            SliderSetting(
-                label = "Repetition Penalty",
-                value = settings.repetitionPenalty ?: AiSettings.DEFAULT_REPETITION_PENALTY,
-                valueRange = AiSettings.MIN_REPETITION_PENALTY..AiSettings.MAX_REPETITION_PENALTY,
-                steps = 19, // 20 steps for 0.1 increments
-                description = "Penalizes repeating tokens. Higher values reduce repetition.",
-                onValueChange = { value ->
-                    settingsRepository.updateSettings(settings.copy(repetitionPenalty = value))
-                }
-            )
             }
 
             PlatformVerticalScrollbar(
@@ -218,6 +224,34 @@ fun SettingsScreen(
                     .align(Alignment.CenterEnd)
                     .fillMaxHeight()
             )
+        }
+    }
+}
+
+@Composable
+private fun SettingsCard(
+    content: @Composable () -> Unit
+) {
+    val colors = chatColors()
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(
+                elevation = 2.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = colors.divider,
+                spotColor = colors.divider
+            ),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = colors.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            content()
         }
     }
 }
@@ -231,12 +265,13 @@ private fun ModelSelector(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val selectedModel = Model.fromId(currentModel) ?: Model.GigaChat
+    val colors = chatColors()
 
     Column(modifier = modifier) {
         Text(
             text = "Model",
             style = MaterialTheme.typography.titleMedium,
-            color = ChatColors.HeaderBackground
+            color = colors.headerText
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -251,11 +286,13 @@ private fun ModelSelector(
                 readOnly = true,
                 label = { Text("Select Model") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                    focusedTextColor = ChatColors.HeaderBackground,
-                    unfocusedTextColor = ChatColors.HeaderBackground,
-                    focusedLabelColor = ChatColors.HeaderBackground,
-                    unfocusedLabelColor = ChatColors.HeaderBackground
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = colors.headerText,
+                    unfocusedTextColor = colors.headerText,
+                    focusedLabelColor = colors.primaryAccent,
+                    unfocusedLabelColor = colors.headerText.copy(alpha = 0.7f),
+                    focusedBorderColor = colors.primaryAccent,
+                    unfocusedBorderColor = colors.divider
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -265,7 +302,7 @@ private fun ModelSelector(
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                containerColor = ChatColors.DropdownBackground
+                containerColor = colors.dropdownBackground
             ) {
                 Model.ALL_MODELS.forEach { model ->
                     DropdownMenuItem(
@@ -274,12 +311,12 @@ private fun ModelSelector(
                                 Text(
                                     text = model.displayName,
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = ChatColors.DropdownText
+                                    color = colors.dropdownText
                                 )
                                 Text(
                                     text = "Provider: ${model.api.name}",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = ChatColors.DropdownTextSecondary
+                                    color = colors.dropdownTextSecondary
                                 )
                             }
                         },
@@ -297,7 +334,7 @@ private fun ModelSelector(
         Text(
             text = "Choose the AI model to use for chat responses",
             style = MaterialTheme.typography.bodySmall,
-            color = ChatColors.AiBubbleBackground
+            color = colors.headerText.copy(alpha = 0.6f)
         )
     }
 }
@@ -312,6 +349,8 @@ private fun SliderSetting(
     onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = chatColors()
+
     Column(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -321,12 +360,12 @@ private fun SliderSetting(
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleMedium,
-                color = ChatColors.HeaderBackground
+                color = colors.headerText
             )
             Text(
                 text = formatFloat(value),
                 style = MaterialTheme.typography.bodyLarge,
-                color = ChatColors.UserBubbleBackground
+                color = colors.primaryAccent
             )
         }
 
@@ -336,16 +375,16 @@ private fun SliderSetting(
             valueRange = valueRange,
             steps = steps,
             colors = SliderDefaults.colors(
-                thumbColor = ChatColors.UserBubbleBackground,
-                activeTrackColor = ChatColors.UserBubbleBackground,
-                inactiveTrackColor = ChatColors.AiBubbleBackground.copy(alpha = 0.3f)
+                thumbColor = colors.primaryAccent,
+                activeTrackColor = colors.primaryAccent,
+                inactiveTrackColor = colors.divider
             )
         )
 
         Text(
             text = description,
             style = MaterialTheme.typography.bodySmall,
-            color = ChatColors.AiBubbleBackground
+            color = colors.headerText.copy(alpha = 0.6f)
         )
     }
 }
@@ -359,6 +398,8 @@ private fun IntSliderSetting(
     onValueChange: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = chatColors()
+
     Column(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -368,12 +409,12 @@ private fun IntSliderSetting(
             Text(
                 text = label,
                 style = MaterialTheme.typography.titleMedium,
-                color = ChatColors.HeaderBackground
+                color = colors.headerText
             )
             Text(
                 text = value.toString(),
                 style = MaterialTheme.typography.bodyLarge,
-                color = ChatColors.UserBubbleBackground
+                color = colors.primaryAccent
             )
         }
 
@@ -381,18 +422,18 @@ private fun IntSliderSetting(
             value = value.toFloat(),
             onValueChange = { onValueChange(it.toInt()) },
             valueRange = valueRange.first.toFloat()..valueRange.last.toFloat(),
-            steps = ((valueRange.last - valueRange.first) / 256).coerceAtLeast(0), // Reasonable number of steps
+            steps = ((valueRange.last - valueRange.first) / 256).coerceAtLeast(0),
             colors = SliderDefaults.colors(
-                thumbColor = ChatColors.UserBubbleBackground,
-                activeTrackColor = ChatColors.UserBubbleBackground,
-                inactiveTrackColor = ChatColors.AiBubbleBackground.copy(alpha = 0.3f)
+                thumbColor = colors.primaryAccent,
+                activeTrackColor = colors.primaryAccent,
+                inactiveTrackColor = colors.divider
             )
         )
 
         Text(
             text = description,
             style = MaterialTheme.typography.bodySmall,
-            color = ChatColors.AiBubbleBackground
+            color = colors.headerText.copy(alpha = 0.6f)
         )
     }
 }
@@ -405,12 +446,13 @@ private fun ResponseModeSelector(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val colors = chatColors()
 
     Column(modifier = modifier) {
         Text(
             text = "Response Mode",
             style = MaterialTheme.typography.titleMedium,
-            color = ChatColors.HeaderBackground
+            color = colors.headerText
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -425,11 +467,13 @@ private fun ResponseModeSelector(
                 readOnly = true,
                 label = { Text("Select Response Mode") },
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
-                    focusedTextColor = ChatColors.HeaderBackground,
-                    unfocusedTextColor = ChatColors.HeaderBackground,
-                    focusedLabelColor = ChatColors.HeaderBackground,
-                    unfocusedLabelColor = ChatColors.HeaderBackground
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = colors.headerText,
+                    unfocusedTextColor = colors.headerText,
+                    focusedLabelColor = colors.primaryAccent,
+                    unfocusedLabelColor = colors.headerText.copy(alpha = 0.7f),
+                    focusedBorderColor = colors.primaryAccent,
+                    unfocusedBorderColor = colors.divider
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -439,7 +483,7 @@ private fun ResponseModeSelector(
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                containerColor = ChatColors.DropdownBackground
+                containerColor = colors.dropdownBackground
             ) {
                 ResponseMode.entries.forEach { mode ->
                     DropdownMenuItem(
@@ -448,12 +492,12 @@ private fun ResponseModeSelector(
                                 Text(
                                     text = mode.displayName,
                                     style = MaterialTheme.typography.bodyLarge,
-                                    color = ChatColors.DropdownText
+                                    color = colors.dropdownText
                                 )
                                 Text(
                                     text = mode.description,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = ChatColors.DropdownTextSecondary
+                                    color = colors.dropdownTextSecondary
                                 )
                             }
                         },
@@ -471,14 +515,14 @@ private fun ResponseModeSelector(
         Text(
             text = when (currentMode) {
                 ResponseMode.NORMAL -> "AI will respond directly to your questions in a conversational manner."
-                ResponseMode.STRUCTURED_JSON -> "AI will respond in strict JSON format with question summary, detailed response, expert role, and unicode symbols. Use the Format button to view structured data."
-                ResponseMode.DIALOG -> "AI will ask clarifying questions one at a time to gather all necessary information before providing a comprehensive final result."
-                ResponseMode.STEP_BY_STEP -> "AI will solve problems step-by-step, showing clear reasoning at each stage. Ideal for math, logic, and analytical questions."
-                ResponseMode.EXPERT_PANEL -> "AI simulates a panel of 3-4 experts discussing the topic from different perspectives, then forming a consensus conclusion."
-                ResponseMode.STRUCTURED_XML -> "AI will respond in strict XML format with question summary, detailed response, expert role, and unicode symbols."
+                ResponseMode.STRUCTURED_JSON -> "AI will respond in strict JSON format with question summary, detailed response, expert role, and unicode symbols."
+                ResponseMode.DIALOG -> "AI will ask clarifying questions one at a time to gather all necessary information."
+                ResponseMode.STEP_BY_STEP -> "AI will solve problems step-by-step, showing clear reasoning at each stage."
+                ResponseMode.EXPERT_PANEL -> "AI simulates a panel of experts discussing the topic from different perspectives."
+                ResponseMode.STRUCTURED_XML -> "AI will respond in strict XML format with structured data."
             },
             style = MaterialTheme.typography.bodySmall,
-            color = ChatColors.AiBubbleBackground
+            color = colors.headerText.copy(alpha = 0.6f)
         )
     }
 }
@@ -489,6 +533,8 @@ private fun PreserveHistorySetting(
     onToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = chatColors()
+
     Column(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -499,17 +545,17 @@ private fun PreserveHistorySetting(
                 Text(
                     text = "Preserve Chat History",
                     style = MaterialTheme.typography.titleMedium,
-                    color = ChatColors.HeaderBackground
+                    color = colors.headerText
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = if (isEnabled) {
-                        "Chat history will be preserved when changing response modes. Only the system prompt will be updated."
+                        "Chat history will be preserved when changing response modes."
                     } else {
                         "Chat history will be cleared when changing response modes."
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = ChatColors.AiBubbleBackground
+                    color = colors.headerText.copy(alpha = 0.6f)
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
@@ -517,10 +563,10 @@ private fun PreserveHistorySetting(
                 checked = isEnabled,
                 onCheckedChange = onToggle,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = ChatColors.UserBubbleBackground,
-                    checkedTrackColor = ChatColors.UserBubbleBackground.copy(alpha = 0.5f),
-                    uncheckedThumbColor = ChatColors.AiBubbleBackground,
-                    uncheckedTrackColor = ChatColors.AiBubbleBackground.copy(alpha = 0.3f)
+                    checkedThumbColor = colors.surface,
+                    checkedTrackColor = colors.primaryAccent,
+                    uncheckedThumbColor = colors.surface,
+                    uncheckedTrackColor = colors.divider
                 )
             )
         }
@@ -535,11 +581,13 @@ private fun SummarizationSettings(
     onThresholdChange: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = chatColors()
+
     Column(modifier = modifier) {
         Text(
             text = "Auto-Summarization",
             style = MaterialTheme.typography.titleMedium,
-            color = ChatColors.HeaderBackground
+            color = colors.headerText
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -552,7 +600,7 @@ private fun SummarizationSettings(
                 Text(
                     text = "Enable Auto-Summarization",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = ChatColors.HeaderBackground
+                    color = colors.headerText
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
@@ -562,7 +610,7 @@ private fun SummarizationSettings(
                         "Auto-summarization is disabled. Use the summarize button manually."
                     },
                     style = MaterialTheme.typography.bodySmall,
-                    color = ChatColors.AiBubbleBackground
+                    color = colors.headerText.copy(alpha = 0.6f)
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
@@ -570,10 +618,10 @@ private fun SummarizationSettings(
                 checked = isEnabled,
                 onCheckedChange = onToggle,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = ChatColors.UserBubbleBackground,
-                    checkedTrackColor = ChatColors.UserBubbleBackground.copy(alpha = 0.5f),
-                    uncheckedThumbColor = ChatColors.AiBubbleBackground,
-                    uncheckedTrackColor = ChatColors.AiBubbleBackground.copy(alpha = 0.3f)
+                    checkedThumbColor = colors.surface,
+                    checkedTrackColor = colors.primaryAccent,
+                    uncheckedThumbColor = colors.surface,
+                    uncheckedTrackColor = colors.divider
                 )
             )
         }
@@ -589,12 +637,12 @@ private fun SummarizationSettings(
                 Text(
                     text = "Message Threshold",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = ChatColors.HeaderBackground
+                    color = colors.headerText
                 )
                 Text(
                     text = "$messageThreshold messages",
                     style = MaterialTheme.typography.bodyLarge,
-                    color = ChatColors.UserBubbleBackground
+                    color = colors.primaryAccent
                 )
             }
 
@@ -604,25 +652,21 @@ private fun SummarizationSettings(
                 valueRange = AiSettings.MIN_SUMMARIZATION_THRESHOLD.toFloat()..AiSettings.MAX_SUMMARIZATION_THRESHOLD.toFloat(),
                 steps = (AiSettings.MAX_SUMMARIZATION_THRESHOLD - AiSettings.MIN_SUMMARIZATION_THRESHOLD) / 2 - 1,
                 colors = SliderDefaults.colors(
-                    thumbColor = ChatColors.UserBubbleBackground,
-                    activeTrackColor = ChatColors.UserBubbleBackground,
-                    inactiveTrackColor = ChatColors.AiBubbleBackground.copy(alpha = 0.3f)
+                    thumbColor = colors.primaryAccent,
+                    activeTrackColor = colors.primaryAccent,
+                    inactiveTrackColor = colors.divider
                 )
             )
 
             Text(
-                text = "Number of messages after which conversation will be automatically summarized (${AiSettings.MIN_SUMMARIZATION_THRESHOLD}-${AiSettings.MAX_SUMMARIZATION_THRESHOLD})",
+                text = "Number of messages after which conversation will be summarized (${AiSettings.MIN_SUMMARIZATION_THRESHOLD}-${AiSettings.MAX_SUMMARIZATION_THRESHOLD})",
                 style = MaterialTheme.typography.bodySmall,
-                color = ChatColors.AiBubbleBackground
+                color = colors.headerText.copy(alpha = 0.6f)
             )
         }
     }
 }
 
-/**
- * Format float to string with specified decimal places
- * Cross-platform alternative to String.format()
- */
 private fun formatFloat(value: Float, decimalPlaces: Int = 2): String {
     val multiplier = when (decimalPlaces) {
         1 -> 10

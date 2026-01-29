@@ -8,18 +8,18 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
-import ru.chtcholeg.app.data.api.GigaChatApi
-import ru.chtcholeg.app.data.api.HuggingFaceApi
-import ru.chtcholeg.app.data.model.FewShotExample
-import ru.chtcholeg.app.data.model.GigaChatFunction
-import ru.chtcholeg.app.data.model.Message
+import ru.chtcholeg.shared.data.api.GigaChatApi
+import ru.chtcholeg.shared.data.api.HuggingFaceApi
+import ru.chtcholeg.shared.data.model.FewShotExample
+import ru.chtcholeg.shared.data.model.GigaChatFunction
+import ru.chtcholeg.shared.data.model.Message
 import ru.chtcholeg.app.data.tool.LocalToolHandler
 import ru.chtcholeg.app.domain.model.AiResponse
 import ru.chtcholeg.app.domain.model.AiSettings
-import ru.chtcholeg.app.domain.model.McpTool
-import ru.chtcholeg.app.domain.model.Model
+import ru.chtcholeg.shared.domain.model.McpTool
+import ru.chtcholeg.shared.domain.model.McpToolResult
+import ru.chtcholeg.shared.domain.model.Model
 import ru.chtcholeg.app.domain.model.ResponseMode
-import kotlin.sequences.ifEmpty
 import kotlin.time.measureTimedValue
 
 class ChatRepositoryImpl(
@@ -337,7 +337,7 @@ $modeSystemPrompt"""
         settings: AiSettings,
         model: Model,
         initialExecutionTimeMs: Long,
-        initialUsage: ru.chtcholeg.app.data.model.Usage?
+        initialUsage: ru.chtcholeg.shared.data.model.Usage?
     ): AiResponse {
         // Get available functions for chained calls
         val mcpTools = getAvailableMcpTools()
@@ -380,7 +380,7 @@ $modeSystemPrompt"""
                 mcpRepository.executeTool(functionCall.name, parameters)
             }
         } catch (e: Exception) {
-            ru.chtcholeg.app.domain.model.McpToolResult(
+            McpToolResult(
                 content = "Tool execution error: ${e.message}",
                 isError = true
             )
@@ -400,7 +400,7 @@ $modeSystemPrompt"""
         )
         conversationHistory.add(functionResultMessage)
 
-        // Make recursive API call to get final answer with tool results
+        // Make API call with function result - keep offering functions for chained calls
         val finalTimedResult = measureTimedValue {
             ensureGigaChatAuthenticated()
             gigaChatApi.sendMessage(
@@ -411,7 +411,7 @@ $modeSystemPrompt"""
                 topP = settings.topP,
                 maxTokens = settings.maxTokens,
                 repetitionPenalty = settings.repetitionPenalty,
-                functions = functions,  // Don't offer functions in follow-up call
+                functions = functions,  // Keep offering functions for chained calls
             )
         }
 
